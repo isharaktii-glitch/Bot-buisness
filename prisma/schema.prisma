@@ -15,12 +15,10 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Payment / Access control
   isApproved    Boolean  @default(false)
-  paymentStatus String   @default("pending") // pending, paid, rejected
+  paymentStatus String   @default("pending")
   paymentNote   String?
 
-  // Bot config (one-to-one)
   botConfig     BotConfig?
 }
 
@@ -29,17 +27,16 @@ model BotConfig {
   userId            String   @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // WhatsApp Cloud API keys
   phoneNumberId     String?
   accessToken       String?
   verifyToken       String?
   whatsappNumber    String?
 
-  // Bot state
   isActive          Boolean  @default(false)
 
-  // Welcome / first message
   welcomeMessage    String?  @db.Text
+  aiEnabled         Boolean  @default(false)
+  businessContext   String?  @db.Text
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
