@@ -7,11 +7,10 @@ import {
   LogOut,
   Power,
   Save,
-  CreditCard,
   CheckCircle2,
   Clock,
-  XCircle,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 
 interface BotConfig {
@@ -21,6 +20,8 @@ interface BotConfig {
   whatsappNumber: string | null;
   welcomeMessage: string | null;
   isActive: boolean;
+  aiEnabled: boolean;
+  businessContext: string | null;
 }
 
 interface UserData {
@@ -44,6 +45,7 @@ export default function DashboardPage() {
     verifyToken: "",
     whatsappNumber: "",
     welcomeMessage: "",
+    businessContext: "",
   });
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function DashboardPage() {
             verifyToken: data.botConfig.verifyToken || "",
             whatsappNumber: data.botConfig.whatsappNumber || "",
             welcomeMessage: data.botConfig.welcomeMessage || "",
+            businessContext: data.botConfig.businessContext || "",
           });
         }
         setLoading(false);
@@ -108,6 +111,22 @@ export default function DashboardPage() {
     }
   };
 
+  const toggleAI = async () => {
+    if (!user?.botConfig) return;
+    const newState = !user.botConfig.aiEnabled;
+    const res = await fetch("/api/user/bot-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aiEnabled: newState }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setUser((prev) =>
+        prev ? { ...prev, botConfig: data.botConfig } : prev
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-darker flex items-center justify-center">
@@ -122,7 +141,6 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-darker">
-      {/* Navbar */}
       <nav className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/10">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg gradient-btn flex items-center justify-center">
@@ -151,7 +169,6 @@ export default function DashboardPage() {
           Manage your WhatsApp bot from here
         </p>
 
-        {/* Payment / Approval Status */}
         {!isApproved && (
           <div className="glass rounded-2xl p-6 mb-6 border-yellow-500/30">
             <div className="flex items-start gap-3">
@@ -176,10 +193,6 @@ export default function DashboardPage() {
                   <p className="font-bold text-primary">
                     +94 XX XXX XXXX (Update this number)
                   </p>
-                  <p className="text-white/50 text-xs mt-2">
-                    Once payment is confirmed, admin will approve your account
-                    and you'll get full dashboard access.
-                  </p>
                 </div>
               </div>
             </div>
@@ -190,7 +203,8 @@ export default function DashboardPage() {
           <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border-primary/30">
             <CheckCircle2 size={20} className="text-primary" />
             <p className="text-sm">
-              Your account is <span className="text-primary font-semibold">approved</span>. 
+              Your account is{" "}
+              <span className="text-primary font-semibold">approved</span>.
               You have full access to bot settings below.
             </p>
           </div>
@@ -216,9 +230,7 @@ export default function DashboardPage() {
             >
               <span
                 className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                  user.botConfig?.isActive
-                    ? "translate-x-9"
-                    : "translate-x-1"
+                  user.botConfig?.isActive ? "translate-x-9" : "translate-x-1"
                 }`}
               ></span>
             </button>
@@ -235,8 +247,73 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* AI Smart Reply Toggle */}
+        <div
+          className={`glass rounded-2xl p-6 mb-6 border-purple-400/20 ${
+            !isApproved ? "opacity-50 pointer-events-none" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold flex items-center gap-2">
+                <Sparkles size={18} className="text-purple-400" /> AI Smart
+                Replies
+              </h3>
+              <p className="text-sm text-white/50 mt-1">
+                Let AI understand and reply to customer messages naturally
+              </p>
+            </div>
+            <button
+              disabled={!isApproved}
+              onClick={toggleAI}
+              className={`relative w-16 h-8 rounded-full transition ${
+                user.botConfig?.aiEnabled ? "bg-purple-400" : "bg-white/15"
+              } ${!isApproved ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <span
+                className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                  user.botConfig?.aiEnabled
+                    ? "translate-x-9"
+                    : "translate-x-1"
+                }`}
+              ></span>
+            </button>
+          </div>
+          <p className="text-xs mt-3 text-white/40">
+            {user.botConfig?.aiEnabled
+              ? "AI will reply based on your business info below"
+              : "OFF - bot will send your fixed welcome message instead"}
+          </p>
+        </div>
+
+        {/* Business Context for AI */}
+        <div
+          className={`glass rounded-2xl p-6 mb-6 ${
+            !isApproved ? "opacity-50 pointer-events-none" : ""
+          }`}
+        >
+          <h3 className="font-bold mb-1">Business Info (for AI replies)</h3>
+          <p className="text-sm text-white/50 mb-4">
+            Tell the AI about your business so it can answer customers
+            accurately (products, prices, delivery, hours, etc.)
+          </p>
+          <textarea
+            value={form.businessContext}
+            onChange={(e) =>
+              setForm({ ...form, businessContext: e.target.value })
+            }
+            rows={5}
+            placeholder="Example: We are Galaxy Electronics, selling phones and accessories in Colombo. Delivery charge is Rs. 300 island-wide, takes 2-3 days. We're open 9am-6pm Mon-Sat. Payment via bank transfer or COD."
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none"
+          />
+        </div>
+
         {/* WhatsApp Connection Form */}
-        <div className={`glass rounded-2xl p-6 mb-6 ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}>
+        <div
+          className={`glass rounded-2xl p-6 mb-6 ${
+            !isApproved ? "opacity-50 pointer-events-none" : ""
+          }`}
+        >
           <h3 className="font-bold mb-1">WhatsApp Business Connection</h3>
           <p className="text-sm text-white/50 mb-5">
             Enter your Meta WhatsApp Cloud API credentials
@@ -305,25 +382,28 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Welcome Message */}
-        <div className={`glass rounded-2xl p-6 mb-6 ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}>
-          <h3 className="font-bold mb-1">Welcome Message</h3>
+        {/* Fixed Welcome Message */}
+        <div
+          className={`glass rounded-2xl p-6 mb-6 ${
+            !isApproved ? "opacity-50 pointer-events-none" : ""
+          }`}
+        >
+          <h3 className="font-bold mb-1">Fixed Welcome Message</h3>
           <p className="text-sm text-white/50 mb-4">
-            This message is sent automatically when someone messages your
-            business for the first time
+            Used when AI Smart Replies is OFF. Sent automatically to every
+            first-time message.
           </p>
           <textarea
             value={form.welcomeMessage}
             onChange={(e) =>
               setForm({ ...form, welcomeMessage: e.target.value })
             }
-            rows={5}
+            rows={4}
             placeholder="Hi! Thanks for messaging us. We're here to help with your order..."
             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none"
           />
         </div>
 
-        {/* Save Button */}
         <div className="flex items-center gap-4">
           <button
             onClick={handleSave}
@@ -344,7 +424,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Webhook Info */}
         {isApproved && (
           <div className="glass rounded-2xl p-6 mt-8">
             <h3 className="font-bold mb-2">📌 Webhook Setup (Important)</h3>
@@ -353,7 +432,7 @@ export default function DashboardPage() {
               WhatsApp → Configuration:
             </p>
             <div className="bg-black/30 rounded-lg p-3 text-xs font-mono text-primary break-all">
-              https://YOUR-DOMAIN.vercel.app/api/webhook/whatsapp
+              https://bot-buisness-five.vercel.app/api/webhook/whatsapp
             </div>
             <p className="text-sm text-white/50 mt-3">
               Use the same <span className="text-white">Verify Token</span>{" "}
