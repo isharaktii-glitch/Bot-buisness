@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest) {
+export async function PUT(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,21 +13,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.id },
-    include: { botConfig: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const user = await prisma.user.findUnique({ where: { id: payload.id } });
+  if (!user || !user.isApproved) {
+    return NextResponse.json(
+      { error: "Your account is not approved yet. Please complete payment." },
+      { status: 403 }
+    );
   }
 
-  return NextResponse.json({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    isApproved: user.isApproved,
-    paymentStatus: user.paymentStatus,
-    botConfig: user.botConfig,
+  const body = await req.json();
+  const {
+    phoneNumberId,
+    accessToken,
+    verifyToken: waVerifyToken,
+    whatsappNumber,
+    welcomeMessage,
+    isActive,
+    aiEnabled,
+    businessContext,
+  } = body;
+
+  const updated = await prisma.botConfig.update({
+    where: { userId: payload.id },
+    data: {
+      ...(phoneNumberId !== undefined && { phoneNumberId }),
+      ...(accessToken !== undefined && { accessToken }),
+      ...(waVerifyToken !== undefined && { verifyToken: waVerifyToken }),
+      ...(whatsappNumber !== undefined && { whatsappNumber }),
+      ...(welcomeMessage !== undefined && { welcomeMessage }),
+      ...(isActive !== undefined && { isActive }),
+      ...(aiEnabled !== undefined && { aiEnabled }),
+      ...(businessContext !== undefined && { businessContext }),
+    },
   });
+
+  return NextResponse.json({ success: true, botConfig: updated });
 }
