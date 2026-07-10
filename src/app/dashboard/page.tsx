@@ -36,6 +36,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
 
@@ -49,26 +50,57 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    fetch("/api/user/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
+    let isMounted = true;
+
+    async function loadUser() {
+      try {
+        const res = await fetch("/api/user/me", { cache: "no-store" });
+
+        if (!isMounted) return;
+
+        if (res.status === 401) {
           router.push("/login");
           return;
         }
-        setUser(data);
-        if (data.botConfig) {
-          setForm({
-            phoneNumberId: data.botConfig.phoneNumberId || "",
-            accessToken: data.botConfig.accessToken || "",
-            verifyToken: data.botConfig.verifyToken || "",
-            whatsappNumber: data.botConfig.whatsappNumber || "",
-            welcomeMessage: data.botConfig.welcomeMessage || "",
-            businessContext: data.botConfig.businessContext || "",
-          });
+
+        if (!res.ok) {
+          setErrorMsg(`Server error (${res.status}). Please try again.`);
+          setLoading(false);
+          return;
         }
+
+        const data = await res.json();
+
+        if (!isMounted) return;
+
+        if (data.error) {
+          setErrorMsg(data.error);
+          setLoading(false);
+          return;
+        }
+
+        setUser(data);
+        setForm({
+          phoneNumberId: data.botConfig?.phoneNumberId || "",
+          accessToken: data.botConfig?.accessToken || "",
+          verifyToken: data.botConfig?.verifyToken || "",
+          whatsappNumber: data.botConfig?.whatsappNumber || "",
+          welcomeMessage: data.botConfig?.welcomeMessage || "",
+          businessContext: data.botConfig?.businessContext || "",
+        });
         setLoading(false);
-      });
+      } catch (err) {
+        if (!isMounted) return;
+        setErrorMsg("Failed to load your account. Please refresh the page.");
+        setLoading(false);
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   const handleLogout = async () => {
@@ -79,17 +111,23 @@ export default function DashboardPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveMsg("");
-    const res = await fetch("/api/user/bot-config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setSaveMsg(data.error || "Failed to save");
-    } else {
-      setSaveMsg("Saved successfully!");
-      setUser((prev) => (prev ? { ...prev, botConfig: data.botConfig } : prev));
+    try {
+      const res = await fetch("/api/user/bot-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveMsg(data.error || "Failed to save");
+      } else {
+        setSaveMsg("Saved successfully!");
+        setUser((prev) =>
+          prev ? { ...prev, botConfig: data.botConfig } : prev
+        );
+      }
+    } catch {
+      setSaveMsg("Network error. Please try again.");
     }
     setSaving(false);
     setTimeout(() => setSaveMsg(""), 3000);
@@ -98,32 +136,40 @@ export default function DashboardPage() {
   const toggleBot = async () => {
     if (!user?.botConfig) return;
     const newState = !user.botConfig.isActive;
-    const res = await fetch("/api/user/bot-config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: newState }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setUser((prev) =>
-        prev ? { ...prev, botConfig: data.botConfig } : prev
-      );
+    try {
+      const res = await fetch("/api/user/bot-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: newState }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUser((prev) =>
+          prev ? { ...prev, botConfig: data.botConfig } : prev
+        );
+      }
+    } catch {
+      // silently ignore
     }
   };
 
   const toggleAI = async () => {
     if (!user?.botConfig) return;
     const newState = !user.botConfig.aiEnabled;
-    const res = await fetch("/api/user/bot-config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ aiEnabled: newState }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setUser((prev) =>
-        prev ? { ...prev, botConfig: data.botConfig } : prev
-      );
+    try {
+      const res = await fetch("/api/user/bot-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiEnabled: newState }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUser((prev) =>
+          prev ? { ...prev, botConfig: data.botConfig } : prev
+        );
+      }
+    } catch {
+      // silently ignore
     }
   };
 
@@ -131,6 +177,20 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-darker flex items-center justify-center">
         <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="min-h-screen bg-darker flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-red-400 mb-4">{errorMsg}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-3 rounded-xl gradient-btn text-black font-bold"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -210,7 +270,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Bot Status Toggle */}
         <div className="glass rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
@@ -247,7 +306,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* AI Smart Reply Toggle */}
         <div
           className={`glass rounded-2xl p-6 mb-6 border-purple-400/20 ${
             !isApproved ? "opacity-50 pointer-events-none" : ""
@@ -286,7 +344,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Business Context for AI */}
         <div
           className={`glass rounded-2xl p-6 mb-6 ${
             !isApproved ? "opacity-50 pointer-events-none" : ""
@@ -303,12 +360,11 @@ export default function DashboardPage() {
               setForm({ ...form, businessContext: e.target.value })
             }
             rows={5}
-            placeholder="Example: We are Galaxy Electronics, selling phones and accessories in Colombo. Delivery charge is Rs. 300 island-wide, takes 2-3 days. We're open 9am-6pm Mon-Sat. Payment via bank transfer or COD."
+            placeholder="Example: We are Galaxy Electronics, selling phones and accessories in Colombo."
             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none"
           />
         </div>
 
-        {/* WhatsApp Connection Form */}
         <div
           className={`glass rounded-2xl p-6 mb-6 ${
             !isApproved ? "opacity-50 pointer-events-none" : ""
@@ -382,7 +438,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Fixed Welcome Message */}
         <div
           className={`glass rounded-2xl p-6 mb-6 ${
             !isApproved ? "opacity-50 pointer-events-none" : ""
@@ -390,8 +445,7 @@ export default function DashboardPage() {
         >
           <h3 className="font-bold mb-1">Fixed Welcome Message</h3>
           <p className="text-sm text-white/50 mb-4">
-            Used when AI Smart Replies is OFF. Sent automatically to every
-            first-time message.
+            Used when AI Smart Replies is OFF.
           </p>
           <textarea
             value={form.welcomeMessage}
@@ -399,7 +453,7 @@ export default function DashboardPage() {
               setForm({ ...form, welcomeMessage: e.target.value })
             }
             rows={4}
-            placeholder="Hi! Thanks for messaging us. We're here to help with your order..."
+            placeholder="Hi! Thanks for messaging us..."
             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none"
           />
         </div>
@@ -428,16 +482,11 @@ export default function DashboardPage() {
           <div className="glass rounded-2xl p-6 mt-8">
             <h3 className="font-bold mb-2">📌 Webhook Setup (Important)</h3>
             <p className="text-sm text-white/50 mb-3">
-              Add this Webhook URL in your Meta Developer Console under
-              WhatsApp → Configuration:
+              Add this Webhook URL in your Meta Developer Console:
             </p>
             <div className="bg-black/30 rounded-lg p-3 text-xs font-mono text-primary break-all">
-              https://bot-buisness-five.vercel.app/api/webhook/whatsapp
+              https://your-domain.vercel.app/api/webhook/whatsapp
             </div>
-            <p className="text-sm text-white/50 mt-3">
-              Use the same <span className="text-white">Verify Token</span>{" "}
-              you entered above.
-            </p>
           </div>
         )}
       </div>
