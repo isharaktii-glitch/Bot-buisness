@@ -11,17 +11,27 @@ import {
   Clock,
   Loader2,
   Sparkles,
+  Facebook,
+  Instagram,
 } from "lucide-react";
 
 interface BotConfig {
-  phoneNumberId: string | null;
-  accessToken: string | null;
-  verifyToken: string | null;
-  whatsappNumber: string | null;
-  welcomeMessage: string | null;
+  waPhoneNumberId: string | null;
+  waAccessToken: string | null;
+  waVerifyToken: string | null;
+  waNumber: string | null;
+  waActive: boolean;
+  fbPageId: string | null;
+  fbAccessToken: string | null;
+  fbVerifyToken: string | null;
+  fbActive: boolean;
+  igAccountId: string | null;
+  igAccessToken: string | null;
+  igActive: boolean;
   isActive: boolean;
   aiEnabled: boolean;
   businessContext: string | null;
+  welcomeMessage: string | null;
 }
 
 interface UserData {
@@ -32,6 +42,8 @@ interface UserData {
   botConfig: BotConfig | null;
 }
 
+type TabType = "whatsapp" | "facebook" | "instagram";
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
@@ -39,65 +51,66 @@ export default function DashboardPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("whatsapp");
 
   const [form, setForm] = useState({
-    phoneNumberId: "",
-    accessToken: "",
-    verifyToken: "",
-    whatsappNumber: "",
+    waPhoneNumberId: "",
+    waAccessToken: "",
+    waVerifyToken: "",
+    waNumber: "",
+    fbPageId: "",
+    fbAccessToken: "",
+    fbVerifyToken: "",
+    igAccountId: "",
+    igAccessToken: "",
     welcomeMessage: "",
     businessContext: "",
   });
 
   useEffect(() => {
     let isMounted = true;
-
     async function loadUser() {
       try {
         const res = await fetch("/api/user/me", { cache: "no-store" });
-
         if (!isMounted) return;
-
         if (res.status === 401) {
           router.push("/login");
           return;
         }
-
         if (!res.ok) {
-          setErrorMsg(`Server error (${res.status}). Please try again.`);
+          setErrorMsg(`Server error (${res.status}).`);
           setLoading(false);
           return;
         }
-
         const data = await res.json();
-
         if (!isMounted) return;
-
         if (data.error) {
           setErrorMsg(data.error);
           setLoading(false);
           return;
         }
-
         setUser(data);
         setForm({
-          phoneNumberId: data.botConfig?.phoneNumberId || "",
-          accessToken: data.botConfig?.accessToken || "",
-          verifyToken: data.botConfig?.verifyToken || "",
-          whatsappNumber: data.botConfig?.whatsappNumber || "",
+          waPhoneNumberId: data.botConfig?.waPhoneNumberId || "",
+          waAccessToken: data.botConfig?.waAccessToken || "",
+          waVerifyToken: data.botConfig?.waVerifyToken || "",
+          waNumber: data.botConfig?.waNumber || "",
+          fbPageId: data.botConfig?.fbPageId || "",
+          fbAccessToken: data.botConfig?.fbAccessToken || "",
+          fbVerifyToken: data.botConfig?.fbVerifyToken || "",
+          igAccountId: data.botConfig?.igAccountId || "",
+          igAccessToken: data.botConfig?.igAccessToken || "",
           welcomeMessage: data.botConfig?.welcomeMessage || "",
           businessContext: data.botConfig?.businessContext || "",
         });
         setLoading(false);
-      } catch (err) {
+      } catch {
         if (!isMounted) return;
-        setErrorMsg("Failed to load your account. Please refresh the page.");
+        setErrorMsg("Failed to load your account. Please refresh.");
         setLoading(false);
       }
     }
-
     loadUser();
-
     return () => {
       isMounted = false;
     };
@@ -122,54 +135,28 @@ export default function DashboardPage() {
         setSaveMsg(data.error || "Failed to save");
       } else {
         setSaveMsg("Saved successfully!");
-        setUser((prev) =>
-          prev ? { ...prev, botConfig: data.botConfig } : prev
-        );
+        setUser((prev) => (prev ? { ...prev, botConfig: data.botConfig } : prev));
       }
     } catch {
-      setSaveMsg("Network error. Please try again.");
+      setSaveMsg("Network error.");
     }
     setSaving(false);
     setTimeout(() => setSaveMsg(""), 3000);
   };
 
-  const toggleBot = async () => {
-    if (!user?.botConfig) return;
-    const newState = !user.botConfig.isActive;
+  const toggleField = async (field: string, currentValue: boolean) => {
     try {
       const res = await fetch("/api/user/bot-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: newState }),
+        body: JSON.stringify({ [field]: !currentValue }),
       });
       const data = await res.json();
       if (res.ok) {
-        setUser((prev) =>
-          prev ? { ...prev, botConfig: data.botConfig } : prev
-        );
+        setUser((prev) => (prev ? { ...prev, botConfig: data.botConfig } : prev));
       }
     } catch {
-      // silently ignore
-    }
-  };
-
-  const toggleAI = async () => {
-    if (!user?.botConfig) return;
-    const newState = !user.botConfig.aiEnabled;
-    try {
-      const res = await fetch("/api/user/bot-config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aiEnabled: newState }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUser((prev) =>
-          prev ? { ...prev, botConfig: data.botConfig } : prev
-        );
-      }
-    } catch {
-      // silently ignore
+      // ignore
     }
   };
 
@@ -185,10 +172,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-darker flex flex-col items-center justify-center px-6 text-center">
         <p className="text-red-400 mb-4">{errorMsg}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-6 py-3 rounded-xl gradient-btn text-black font-bold"
-        >
+        <button onClick={() => window.location.reload()} className="px-6 py-3 rounded-xl gradient-btn text-black font-bold">
           Retry
         </button>
       </div>
@@ -196,7 +180,6 @@ export default function DashboardPage() {
   }
 
   if (!user) return null;
-
   const isApproved = user.isApproved;
 
   return (
@@ -209,25 +192,16 @@ export default function DashboardPage() {
           <span className="font-bold">BotVerse</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-white/60 hidden sm:block">
-            {user.username}
-          </span>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition"
-          >
+          <span className="text-sm text-white/60 hidden sm:block">{user.username}</span>
+          <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition">
             <LogOut size={16} /> Logout
           </button>
         </div>
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold mb-1">
-          Welcome, {user.username} 👋
-        </h1>
-        <p className="text-white/50 text-sm mb-6">
-          Manage your WhatsApp bot from here
-        </p>
+        <h1 className="text-2xl font-bold mb-1">Welcome, {user.username} 👋</h1>
+        <p className="text-white/50 text-sm mb-6">Manage your bot from here</p>
 
         {!isApproved && (
           <div className="glass rounded-2xl p-6 mb-6 border-yellow-500/30">
@@ -237,22 +211,14 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1">
                 <h3 className="font-bold mb-1">
-                  {user.paymentStatus === "rejected"
-                    ? "Payment Rejected"
-                    : "Waiting for Payment Approval"}
+                  {user.paymentStatus === "rejected" ? "Payment Rejected" : "Waiting for Payment Approval"}
                 </h3>
                 <p className="text-sm text-white/60 mb-4">
-                  {user.paymentStatus === "rejected"
-                    ? "Your payment was not approved. Please contact support or try again."
-                    : "Complete your payment and our team will activate your bot access within a short time."}
+                  Complete your payment and our team will activate your bot access.
                 </p>
-                <div className="glass rounded-xl p-4 text-sm space-y-1">
-                  <p className="text-white/70">
-                    📱 Contact us on WhatsApp to complete payment:
-                  </p>
-                  <p className="font-bold text-primary">
-                    +94 XX XXX XXXX (Update this number)
-                  </p>
+                <div className="glass rounded-xl p-4 text-sm">
+                  <p className="text-white/70">📱 Contact us on WhatsApp:</p>
+                  <p className="font-bold text-primary">+94 XX XXX XXXX</p>
                 </div>
               </div>
             </div>
@@ -263,9 +229,7 @@ export default function DashboardPage() {
           <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border-primary/30">
             <CheckCircle2 size={20} className="text-primary" />
             <p className="text-sm">
-              Your account is{" "}
-              <span className="text-primary font-semibold">approved</span>.
-              You have full access to bot settings below.
+              Your account is <span className="text-primary font-semibold">approved</span>.
             </p>
           </div>
         )}
@@ -274,221 +238,204 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold flex items-center gap-2">
-                <Power size={18} className="text-primary" /> Bot Status
+                <Power size={18} className="text-primary" /> Bot Status (Master Switch)
               </h3>
-              <p className="text-sm text-white/50 mt-1">
-                Turn your bot on or off anytime
-              </p>
+              <p className="text-sm text-white/50 mt-1">Turn your entire bot on or off</p>
             </div>
             <button
               disabled={!isApproved}
-              onClick={toggleBot}
+              onClick={() => toggleField("isActive", user.botConfig?.isActive || false)}
               className={`relative w-16 h-8 rounded-full transition ${
                 user.botConfig?.isActive ? "bg-primary" : "bg-white/15"
               } ${!isApproved ? "opacity-40 cursor-not-allowed" : ""}`}
             >
-              <span
-                className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                  user.botConfig?.isActive ? "translate-x-9" : "translate-x-1"
-                }`}
-              ></span>
+              <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                user.botConfig?.isActive ? "translate-x-9" : "translate-x-1"
+              }`}></span>
             </button>
           </div>
-          <p className="text-xs mt-3 text-white/40">
-            Status:{" "}
-            <span
-              className={
-                user.botConfig?.isActive ? "text-primary" : "text-white/50"
-              }
-            >
-              {user.botConfig?.isActive ? "Active" : "Inactive"}
-            </span>
-          </p>
         </div>
 
-        <div
-          className={`glass rounded-2xl p-6 mb-6 border-purple-400/20 ${
-            !isApproved ? "opacity-50 pointer-events-none" : ""
-          }`}
-        >
+        <div className={`glass rounded-2xl p-6 mb-6 border-purple-400/20 ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}>
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold flex items-center gap-2">
-                <Sparkles size={18} className="text-purple-400" /> AI Smart
-                Replies
+                <Sparkles size={18} className="text-purple-400" /> AI Smart Replies
               </h3>
-              <p className="text-sm text-white/50 mt-1">
-                Let AI understand and reply to customer messages naturally
-              </p>
+              <p className="text-sm text-white/50 mt-1">Gemini AI powered replies</p>
             </div>
             <button
               disabled={!isApproved}
-              onClick={toggleAI}
+              onClick={() => toggleField("aiEnabled", user.botConfig?.aiEnabled || false)}
               className={`relative w-16 h-8 rounded-full transition ${
                 user.botConfig?.aiEnabled ? "bg-purple-400" : "bg-white/15"
               } ${!isApproved ? "opacity-40 cursor-not-allowed" : ""}`}
             >
-              <span
-                className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                  user.botConfig?.aiEnabled
-                    ? "translate-x-9"
-                    : "translate-x-1"
-                }`}
-              ></span>
+              <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                user.botConfig?.aiEnabled ? "translate-x-9" : "translate-x-1"
+              }`}></span>
             </button>
           </div>
-          <p className="text-xs mt-3 text-white/40">
-            {user.botConfig?.aiEnabled
-              ? "AI will reply based on your business info below"
-              : "OFF - bot will send your fixed welcome message instead"}
-          </p>
         </div>
 
-        <div
-          className={`glass rounded-2xl p-6 mb-6 ${
-            !isApproved ? "opacity-50 pointer-events-none" : ""
-          }`}
-        >
+        <div className={`glass rounded-2xl p-6 mb-6 ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}>
           <h3 className="font-bold mb-1">Business Info (for AI replies)</h3>
-          <p className="text-sm text-white/50 mb-4">
-            Tell the AI about your business so it can answer customers
-            accurately (products, prices, delivery, hours, etc.)
-          </p>
           <textarea
             value={form.businessContext}
-            onChange={(e) =>
-              setForm({ ...form, businessContext: e.target.value })
-            }
-            rows={5}
-            placeholder="Example: We are Galaxy Electronics, selling phones and accessories in Colombo."
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none"
+            onChange={(e) => setForm({ ...form, businessContext: e.target.value })}
+            rows={4}
+            placeholder="Tell AI about your business: products, prices, delivery, hours..."
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none mt-3"
           />
         </div>
 
-        <div
-          className={`glass rounded-2xl p-6 mb-6 ${
-            !isApproved ? "opacity-50 pointer-events-none" : ""
-          }`}
-        >
-          <h3 className="font-bold mb-1">WhatsApp Business Connection</h3>
-          <p className="text-sm text-white/50 mb-5">
-            Enter your Meta WhatsApp Cloud API credentials
-          </p>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-white/70 block mb-1.5">
-                WhatsApp Number
-              </label>
-              <input
-                type="text"
-                value={form.whatsappNumber}
-                onChange={(e) =>
-                  setForm({ ...form, whatsappNumber: e.target.value })
-                }
-                placeholder="+94712345678"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-white/70 block mb-1.5">
-                Phone Number ID
-              </label>
-              <input
-                type="text"
-                value={form.phoneNumberId}
-                onChange={(e) =>
-                  setForm({ ...form, phoneNumberId: e.target.value })
-                }
-                placeholder="From Meta Developer Console"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-white/70 block mb-1.5">
-                Access Token
-              </label>
-              <input
-                type="password"
-                value={form.accessToken}
-                onChange={(e) =>
-                  setForm({ ...form, accessToken: e.target.value })
-                }
-                placeholder="Your permanent access token"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-white/70 block mb-1.5">
-                Verify Token
-              </label>
-              <input
-                type="text"
-                value={form.verifyToken}
-                onChange={(e) =>
-                  setForm({ ...form, verifyToken: e.target.value })
-                }
-                placeholder="Create your own verify token (e.g. mybot123)"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div
-          className={`glass rounded-2xl p-6 mb-6 ${
-            !isApproved ? "opacity-50 pointer-events-none" : ""
-          }`}
-        >
+        <div className={`glass rounded-2xl p-6 mb-6 ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}>
           <h3 className="font-bold mb-1">Fixed Welcome Message</h3>
-          <p className="text-sm text-white/50 mb-4">
-            Used when AI Smart Replies is OFF.
-          </p>
+          <p className="text-sm text-white/50 mb-3">Used when AI is OFF</p>
           <textarea
             value={form.welcomeMessage}
-            onChange={(e) =>
-              setForm({ ...form, welcomeMessage: e.target.value })
-            }
-            rows={4}
+            onChange={(e) => setForm({ ...form, welcomeMessage: e.target.value })}
+            rows={3}
             placeholder="Hi! Thanks for messaging us..."
             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-primary transition resize-none"
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleSave}
-            disabled={!isApproved || saving}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl gradient-btn text-black font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
-            Save Settings
-          </button>
-          {saveMsg && (
-            <span className="text-sm text-primary flex items-center gap-1">
-              <CheckCircle2 size={16} /> {saveMsg}
-            </span>
+        <div className={`glass rounded-2xl p-6 mb-6 ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}>
+          <h3 className="font-bold mb-4">Connect Your Platforms</h3>
+
+          <div className="flex gap-2 mb-6 border-b border-white/10 pb-3">
+            <button
+              onClick={() => setActiveTab("whatsapp")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                activeTab === "whatsapp" ? "bg-primary text-black" : "bg-white/5 text-white/60"
+              }`}
+            >
+              <MessageCircle size={16} /> WhatsApp
+            </button>
+            <button
+              onClick={() => setActiveTab("facebook")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                activeTab === "facebook" ? "bg-blue-500 text-white" : "bg-white/5 text-white/60"
+              }`}
+            >
+              <Facebook size={16} /> Facebook
+            </button>
+            <button
+              onClick={() => setActiveTab("instagram")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                activeTab === "instagram" ? "bg-pink-500 text-white" : "bg-white/5 text-white/60"
+              }`}
+            >
+              <Instagram size={16} /> Instagram
+            </button>
+          </div>
+
+          {activeTab === "whatsapp" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-white/70">WhatsApp Bot Status</span>
+                <button
+                  onClick={() => toggleField("waActive", user.botConfig?.waActive || false)}
+                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.waActive ? "bg-primary" : "bg-white/15"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.waActive ? "translate-x-7" : "translate-x-1"}`}></span>
+                </button>
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">WhatsApp Number</label>
+                <input type="text" value={form.waNumber} onChange={(e) => setForm({ ...form, waNumber: e.target.value })}
+                  placeholder="+94712345678" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Phone Number ID</label>
+                <input type="text" value={form.waPhoneNumberId} onChange={(e) => setForm({ ...form, waPhoneNumberId: e.target.value })}
+                  placeholder="From Meta Developer Console" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Access Token</label>
+                <input type="password" value={form.waAccessToken} onChange={(e) => setForm({ ...form, waAccessToken: e.target.value })}
+                  placeholder="Permanent access token" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Verify Token</label>
+                <input type="text" value={form.waVerifyToken} onChange={(e) => setForm({ ...form, waVerifyToken: e.target.value })}
+                  placeholder="Create your own (e.g. mybot123)" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 text-xs font-mono text-primary break-all mt-2">
+                Webhook: https://bot-buisness-8jcc.vercel.app/api/webhook/whatsapp
+              </div>
+            </div>
+          )}
+
+          {activeTab === "facebook" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-white/70">Facebook Bot Status</span>
+                <button
+                  onClick={() => toggleField("fbActive", user.botConfig?.fbActive || false)}
+                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.fbActive ? "bg-primary" : "bg-white/15"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.fbActive ? "translate-x-7" : "translate-x-1"}`}></span>
+                </button>
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Facebook Page ID</label>
+                <input type="text" value={form.fbPageId} onChange={(e) => setForm({ ...form, fbPageId: e.target.value })}
+                  placeholder="From Meta Developer Console" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Page Access Token</label>
+                <input type="password" value={form.fbAccessToken} onChange={(e) => setForm({ ...form, fbAccessToken: e.target.value })}
+                  placeholder="Page access token" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Verify Token</label>
+                <input type="text" value={form.fbVerifyToken} onChange={(e) => setForm({ ...form, fbVerifyToken: e.target.value })}
+                  placeholder="Create your own" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 text-xs font-mono text-blue-400 break-all mt-2">
+                Webhook: https://bot-buisness-8jcc.vercel.app/api/webhook/facebook
+              </div>
+            </div>
+          )}
+
+          {activeTab === "instagram" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-white/70">Instagram Bot Status</span>
+                <button
+                  onClick={() => toggleField("igActive", user.botConfig?.igActive || false)}
+                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.igActive ? "bg-primary" : "bg-white/15"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.igActive ? "translate-x-7" : "translate-x-1"}`}></span>
+                </button>
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Instagram Account ID</label>
+                <input type="text" value={form.igAccountId} onChange={(e) => setForm({ ...form, igAccountId: e.target.value })}
+                  placeholder="From Meta Developer Console" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div>
+                <label className="text-sm text-white/70 block mb-1.5">Access Token</label>
+                <input type="password" value={form.igAccessToken} onChange={(e) => setForm({ ...form, igAccessToken: e.target.value })}
+                  placeholder="Access token" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-primary transition" />
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 text-xs font-mono text-pink-400 break-all mt-2">
+                Webhook: https://bot-buisness-8jcc.vercel.app/api/webhook/instagram
+              </div>
+            </div>
           )}
         </div>
 
-        {isApproved && (
-          <div className="glass rounded-2xl p-6 mt-8">
-            <h3 className="font-bold mb-2">📌 Webhook Setup (Important)</h3>
-            <p className="text-sm text-white/50 mb-3">
-              Add this Webhook URL in your Meta Developer Console:
-            </p>
-            <div className="bg-black/30 rounded-lg p-3 text-xs font-mono text-primary break-all">
-              https://your-domain.vercel.app/api/webhook/whatsapp
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <button onClick={handleSave} disabled={!isApproved || saving}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl gradient-btn text-black font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed">
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            Save Settings
+          </button>
+          {saveMsg && <span className="text-sm text-primary flex items-center gap-1"><CheckCircle2 size={16} /> {saveMsg}</span>}
+        </div>
       </div>
     </main>
   );
