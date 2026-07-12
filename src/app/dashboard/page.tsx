@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [toggling, setToggling] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("whatsapp");
 
   const [form, setForm] = useState({
@@ -125,11 +126,10 @@ export default function DashboardPage() {
     setSaving(true);
     setSaveMsg("");
     try {
-      const payload: any = { ...form };
       const res = await fetch("/api/user/bot-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -146,6 +146,7 @@ export default function DashboardPage() {
   };
 
   const toggleField = async (field: string, currentValue: boolean) => {
+    setToggling(field);
     try {
       const res = await fetch("/api/user/bot-config", {
         method: "PUT",
@@ -156,11 +157,12 @@ export default function DashboardPage() {
       if (res.ok) {
         setUser((prev) => (prev ? { ...prev, botConfig: data.botConfig } : prev));
       } else {
-        alert(data.error || "Failed to toggle");
+        alert("Toggle failed: " + (data.error || "unknown error"));
       }
-    } catch {
-      alert("Network error while toggling");
+    } catch (err) {
+      alert("Network error while toggling: " + String(err));
     }
+    setToggling(null);
   };
 
   if (loading) {
@@ -246,11 +248,12 @@ export default function DashboardPage() {
               <p className="text-sm text-white/50 mt-1">Turn your entire bot on or off</p>
             </div>
             <button
-              disabled={!isApproved}
+              type="button"
+              disabled={!isApproved || toggling === "isActive"}
               onClick={() => toggleField("isActive", user.botConfig?.isActive || false)}
               className={`relative w-16 h-8 rounded-full transition ${
                 user.botConfig?.isActive ? "bg-primary" : "bg-white/15"
-              } ${!isApproved ? "opacity-40 cursor-not-allowed" : ""}`}
+              } ${!isApproved ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
             >
               <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
                 user.botConfig?.isActive ? "translate-x-9" : "translate-x-1"
@@ -268,11 +271,12 @@ export default function DashboardPage() {
               <p className="text-sm text-white/50 mt-1">Gemini AI powered replies</p>
             </div>
             <button
-              disabled={!isApproved}
+              type="button"
+              disabled={!isApproved || toggling === "aiEnabled"}
               onClick={() => toggleField("aiEnabled", user.botConfig?.aiEnabled || false)}
               className={`relative w-16 h-8 rounded-full transition ${
                 user.botConfig?.aiEnabled ? "bg-purple-400" : "bg-white/15"
-              } ${!isApproved ? "opacity-40 cursor-not-allowed" : ""}`}
+              } ${!isApproved ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
             >
               <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
                 user.botConfig?.aiEnabled ? "translate-x-9" : "translate-x-1"
@@ -309,6 +313,7 @@ export default function DashboardPage() {
 
           <div className="flex gap-2 mb-6 border-b border-white/10 pb-3">
             <button
+              type="button"
               onClick={() => setActiveTab("whatsapp")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
                 activeTab === "whatsapp" ? "bg-primary text-black" : "bg-white/5 text-white/60"
@@ -317,6 +322,7 @@ export default function DashboardPage() {
               <MessageCircle size={16} /> WhatsApp
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("facebook")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
                 activeTab === "facebook" ? "bg-blue-500 text-white" : "bg-white/5 text-white/60"
@@ -325,6 +331,7 @@ export default function DashboardPage() {
               <Facebook size={16} /> Facebook
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("instagram")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
                 activeTab === "instagram" ? "bg-pink-500 text-white" : "bg-white/5 text-white/60"
@@ -339,8 +346,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/70">WhatsApp Bot Status</span>
                 <button
+                  type="button"
+                  disabled={toggling === "waActive"}
                   onClick={() => toggleField("waActive", user.botConfig?.waActive || false)}
-                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.waActive ? "bg-primary" : "bg-white/15"}`}
+                  className={`relative w-12 h-6 rounded-full transition cursor-pointer ${user.botConfig?.waActive ? "bg-primary" : "bg-white/15"}`}
                 >
                   <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.waActive ? "translate-x-7" : "translate-x-1"}`}></span>
                 </button>
@@ -376,8 +385,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/70">Facebook Bot Status</span>
                 <button
+                  type="button"
+                  disabled={toggling === "fbActive"}
                   onClick={() => toggleField("fbActive", user.botConfig?.fbActive || false)}
-                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.fbActive ? "bg-primary" : "bg-white/15"}`}
+                  className={`relative w-12 h-6 rounded-full transition cursor-pointer ${user.botConfig?.fbActive ? "bg-primary" : "bg-white/15"}`}
                 >
                   <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.fbActive ? "translate-x-7" : "translate-x-1"}`}></span>
                 </button>
@@ -408,8 +419,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/70">Instagram Bot Status</span>
                 <button
+                  type="button"
+                  disabled={toggling === "igActive"}
                   onClick={() => toggleField("igActive", user.botConfig?.igActive || false)}
-                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.igActive ? "bg-primary" : "bg-white/15"}`}
+                  className={`relative w-12 h-6 rounded-full transition cursor-pointer ${user.botConfig?.igActive ? "bg-primary" : "bg-white/15"}`}
                 >
                   <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.igActive ? "translate-x-7" : "translate-x-1"}`}></span>
                 </button>
