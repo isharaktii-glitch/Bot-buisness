@@ -125,17 +125,7 @@ export default function DashboardPage() {
     setSaving(true);
     setSaveMsg("");
     try {
-      const payload: any = { ...form, isActive: true };
-      if (form.waPhoneNumberId && form.waAccessToken) {
-        payload.waActive = true;
-      }
-      if (form.fbPageId && form.fbAccessToken) {
-        payload.fbActive = true;
-      }
-      if (form.igAccountId && form.igAccessToken) {
-        payload.igActive = true;
-      }
-
+      const payload: any = { ...form };
       const res = await fetch("/api/user/bot-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -165,9 +155,11 @@ export default function DashboardPage() {
       const data = await res.json();
       if (res.ok) {
         setUser((prev) => (prev ? { ...prev, botConfig: data.botConfig } : prev));
+      } else {
+        alert(data.error || "Failed to toggle");
       }
     } catch {
-      // ignore
+      alert("Network error while toggling");
     }
   };
 
@@ -249,15 +241,21 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold flex items-center gap-2">
-                <Power size={18} className="text-primary" /> Bot Status
+                <Power size={18} className="text-primary" /> Bot Status (Master Switch)
               </h3>
-              <p className="text-sm text-white/50 mt-1">
-                {user.botConfig?.isActive ? "Active" : "Save settings below to activate"}
-              </p>
+              <p className="text-sm text-white/50 mt-1">Turn your entire bot on or off</p>
             </div>
-            <span className={`text-xs px-3 py-1 rounded-full ${user.botConfig?.isActive ? "bg-primary/20 text-primary" : "bg-white/10 text-white/40"}`}>
-              {user.botConfig?.isActive ? "ON" : "OFF"}
-            </span>
+            <button
+              disabled={!isApproved}
+              onClick={() => toggleField("isActive", user.botConfig?.isActive || false)}
+              className={`relative w-16 h-8 rounded-full transition ${
+                user.botConfig?.isActive ? "bg-primary" : "bg-white/15"
+              } ${!isApproved ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                user.botConfig?.isActive ? "translate-x-9" : "translate-x-1"
+              }`}></span>
+            </button>
           </div>
         </div>
 
@@ -339,10 +337,13 @@ export default function DashboardPage() {
           {activeTab === "whatsapp" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-white/70">WhatsApp Status</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${user.botConfig?.waActive ? "bg-primary/20 text-primary" : "bg-white/10 text-white/40"}`}>
-                  {user.botConfig?.waActive ? "Connected" : "Not connected"}
-                </span>
+                <span className="text-sm text-white/70">WhatsApp Bot Status</span>
+                <button
+                  onClick={() => toggleField("waActive", user.botConfig?.waActive || false)}
+                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.waActive ? "bg-primary" : "bg-white/15"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.waActive ? "translate-x-7" : "translate-x-1"}`}></span>
+                </button>
               </div>
               <div>
                 <label className="text-sm text-white/70 block mb-1.5">WhatsApp Number</label>
@@ -373,10 +374,13 @@ export default function DashboardPage() {
           {activeTab === "facebook" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-white/70">Facebook Status</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${user.botConfig?.fbActive ? "bg-primary/20 text-primary" : "bg-white/10 text-white/40"}`}>
-                  {user.botConfig?.fbActive ? "Connected" : "Not connected"}
-                </span>
+                <span className="text-sm text-white/70">Facebook Bot Status</span>
+                <button
+                  onClick={() => toggleField("fbActive", user.botConfig?.fbActive || false)}
+                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.fbActive ? "bg-primary" : "bg-white/15"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.fbActive ? "translate-x-7" : "translate-x-1"}`}></span>
+                </button>
               </div>
               <div>
                 <label className="text-sm text-white/70 block mb-1.5">Facebook Page ID</label>
@@ -402,10 +406,13 @@ export default function DashboardPage() {
           {activeTab === "instagram" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-white/70">Instagram Status</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${user.botConfig?.igActive ? "bg-primary/20 text-primary" : "bg-white/10 text-white/40"}`}>
-                  {user.botConfig?.igActive ? "Connected" : "Not connected"}
-                </span>
+                <span className="text-sm text-white/70">Instagram Bot Status</span>
+                <button
+                  onClick={() => toggleField("igActive", user.botConfig?.igActive || false)}
+                  className={`relative w-12 h-6 rounded-full transition ${user.botConfig?.igActive ? "bg-primary" : "bg-white/15"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.igActive ? "translate-x-7" : "translate-x-1"}`}></span>
+                </button>
               </div>
               <div>
                 <label className="text-sm text-white/70 block mb-1.5">Instagram Account ID</label>
