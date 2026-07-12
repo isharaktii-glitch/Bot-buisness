@@ -27,13 +27,22 @@ model BotConfig {
   userId            String   @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  phoneNumberId     String?
-  accessToken       String?
-  verifyToken       String?
-  whatsappNumber    String?
+  waPhoneNumberId   String?
+  waAccessToken     String?
+  waVerifyToken     String?
+  waNumber          String?
+  waActive          Boolean  @default(false)
+
+  fbPageId          String?
+  fbAccessToken     String?
+  fbVerifyToken     String?
+  fbActive          Boolean  @default(false)
+
+  igAccountId       String?
+  igAccessToken     String?
+  igActive          Boolean  @default(false)
 
   isActive          Boolean  @default(false)
-
   welcomeMessage    String?  @db.Text
   aiEnabled         Boolean  @default(false)
   businessContext   String?  @db.Text
