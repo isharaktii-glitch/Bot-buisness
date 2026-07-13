@@ -247,18 +247,13 @@ export default function DashboardPage() {
               </h3>
               <p className="text-sm text-white/50 mt-1">Turn your entire bot on or off</p>
             </div>
-            <button
-              type="button"
-              disabled={!isApproved || toggling === "isActive"}
-              onClick={() => toggleField("isActive", user.botConfig?.isActive || false)}
-              className={`relative w-16 h-8 rounded-full transition ${
-                user.botConfig?.isActive ? "bg-primary" : "bg-white/15"
-              } ${!isApproved ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                user.botConfig?.isActive ? "translate-x-9" : "translate-x-1"
-              }`}></span>
-            </button>
+            <input
+              type="checkbox"
+              disabled={!isApproved}
+              checked={user.botConfig?.isActive || false}
+              onChange={() => toggleField("isActive", user.botConfig?.isActive || false)}
+              className="w-7 h-7 accent-teal-400 cursor-pointer"
+            />
           </div>
         </div>
 
@@ -270,18 +265,13 @@ export default function DashboardPage() {
               </h3>
               <p className="text-sm text-white/50 mt-1">Gemini AI powered replies</p>
             </div>
-            <button
-              type="button"
-              disabled={!isApproved || toggling === "aiEnabled"}
-              onClick={() => toggleField("aiEnabled", user.botConfig?.aiEnabled || false)}
-              className={`relative w-16 h-8 rounded-full transition ${
-                user.botConfig?.aiEnabled ? "bg-purple-400" : "bg-white/15"
-              } ${!isApproved ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
-                user.botConfig?.aiEnabled ? "translate-x-9" : "translate-x-1"
-              }`}></span>
-            </button>
+            <input
+              type="checkbox"
+              disabled={!isApproved}
+              checked={user.botConfig?.aiEnabled || false}
+              onChange={() => toggleField("aiEnabled", user.botConfig?.aiEnabled || false)}
+              className="w-7 h-7 accent-purple-400 cursor-pointer"
+            />
           </div>
         </div>
 
@@ -345,14 +335,12 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/70">WhatsApp Bot Status</span>
-                <button
-                  type="button"
-                  disabled={toggling === "waActive"}
-                  onClick={() => toggleField("waActive", user.botConfig?.waActive || false)}
-                  className={`relative w-12 h-6 rounded-full transition cursor-pointer ${user.botConfig?.waActive ? "bg-primary" : "bg-white/15"}`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.waActive ? "translate-x-7" : "translate-x-1"}`}></span>
-                </button>
+                <input
+                  type="checkbox"
+                  checked={user.botConfig?.waActive || false}
+                  onChange={() => toggleField("waActive", user.botConfig?.waActive || false)}
+                  className="w-6 h-6 accent-teal-400 cursor-pointer"
+                />
               </div>
               <div>
                 <label className="text-sm text-white/70 block mb-1.5">WhatsApp Number</label>
@@ -384,14 +372,12 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/70">Facebook Bot Status</span>
-                <button
-                  type="button"
-                  disabled={toggling === "fbActive"}
-                  onClick={() => toggleField("fbActive", user.botConfig?.fbActive || false)}
-                  className={`relative w-12 h-6 rounded-full transition cursor-pointer ${user.botConfig?.fbActive ? "bg-primary" : "bg-white/15"}`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.fbActive ? "translate-x-7" : "translate-x-1"}`}></span>
-                </button>
+                <input
+                  type="checkbox"
+                  checked={user.botConfig?.fbActive || false}
+                  onChange={() => toggleField("fbActive", user.botConfig?.fbActive || false)}
+                  className="w-6 h-6 accent-blue-400 cursor-pointer"
+                />
               </div>
               <div>
                 <label className="text-sm text-white/70 block mb-1.5">Facebook Page ID</label>
@@ -418,14 +404,12 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/70">Instagram Bot Status</span>
-                <button
-                  type="button"
-                  disabled={toggling === "igActive"}
-                  onClick={() => toggleField("igActive", user.botConfig?.igActive || false)}
-                  className={`relative w-12 h-6 rounded-full transition cursor-pointer ${user.botConfig?.igActive ? "bg-primary" : "bg-white/15"}`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${user.botConfig?.igActive ? "translate-x-7" : "translate-x-1"}`}></span>
-                </button>
+                <input
+                  type="checkbox"
+                  checked={user.botConfig?.igActive || false}
+                  onChange={() => toggleField("igActive", user.botConfig?.igActive || false)}
+                  className="w-6 h-6 accent-pink-400 cursor-pointer"
+                />
               </div>
               <div>
                 <label className="text-sm text-white/70 block mb-1.5">Instagram Account ID</label>
